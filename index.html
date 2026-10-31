@@ -13,7 +13,7 @@
 <body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Caveat:wght@500;700&display=swap">
 <style>
 /* Layout: phone-first single column — level hero, today's habits, month calendar, push-up progress, achievements, settings. */
 :root {
@@ -39,6 +39,10 @@
   --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
   --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --n1: #FFE680; --n2: #FFB8C9; --n3: #BDEBB0; --n4: #B6DAFF; --n5: #FFC98A;
+  --note-ink: #2A2410;
+  --tape: rgba(255, 255, 255, 0.5);
   --r: 16px;
 }
 @media (prefers-color-scheme: dark) {
@@ -48,6 +52,8 @@
     --done: #74C08A; --done-soft: #1C3224; --gold: #F0BE55; --gold-soft: #3A2E15;
     --warn: #E3A06A; --warn-soft: #3A2A1C;
     --hero-a: #18244A; --hero-b: #26397A; --hero-fg: #F3F6FD; --hero-muted: #A9B7DD;
+    --n1: #EBD368; --n2: #E8A2B4; --n3: #A6D59A; --n4: #9FC6EE; --n5: #EBB474;
+    --tape: rgba(255, 255, 255, 0.28);
     color-scheme: dark;
   }
 }
@@ -57,6 +63,8 @@
   --done: #74C08A; --done-soft: #1C3224; --gold: #F0BE55; --gold-soft: #3A2E15;
   --warn: #E3A06A; --warn-soft: #3A2A1C;
   --hero-a: #18244A; --hero-b: #26397A; --hero-fg: #F3F6FD; --hero-muted: #A9B7DD;
+  --n1: #EBD368; --n2: #E8A2B4; --n3: #A6D59A; --n4: #9FC6EE; --n5: #EBB474;
+  --tape: rgba(255, 255, 255, 0.28);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -123,6 +131,45 @@ section { display: flex; flex-direction: column; gap: 12px; }
 .hstat b { color: var(--hero-fg); font-family: var(--font-mono); font-size: 15px; }
 .hstat svg { width: 16px; height: 16px; }
 .msg { grid-column: 1 / -1; font-size: 14px; background: rgba(0,0,0,0.18); border-radius: 12px; padding: 10px 12px; position: relative; z-index: 1; }
+
+/* ---- sticky notes ---- */
+.notes-row {
+  display: flex; align-items: flex-start; gap: 14px; overflow-x: auto;
+  padding: 14px 6px 16px; margin: -8px -6px 0; scroll-snap-type: x proximity; scrollbar-width: thin;
+}
+.note {
+  flex: none; width: 160px; min-height: 160px; position: relative;
+  background: var(--nc); color: var(--note-ink);
+  border-radius: 3px 3px 14px 3px; padding: 20px 12px 8px;
+  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.12);
+  transform: rotate(var(--rot)); scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 6px; transition: transform .2s;
+}
+.note:focus-within { transform: rotate(0deg) scale(1.03); z-index: 1; }
+.note::before {
+  content: ""; position: absolute; top: -9px; left: 50%; width: 58px; height: 20px;
+  transform: translateX(-50%) rotate(-4deg); background: var(--tape);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.note textarea {
+  flex: 1 0 auto; width: 100%; min-height: 100px; padding: 0; border: 0; outline: none; resize: none; overflow: hidden;
+  background: transparent; color: inherit; font-family: var(--font-hand); font-size: 23px; line-height: 1.12; font-weight: 500;
+}
+.note textarea::placeholder { color: rgba(42, 36, 16, 0.45); }
+.note .tools { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 26px; }
+.note .dots { display: flex; gap: 5px; }
+.note .dot-c { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(42, 36, 16, 0.35); padding: 0; background: var(--c); }
+.note .dot-c[aria-pressed="true"] { border: 2px solid var(--note-ink); }
+.note .nx { border: 0; background: transparent; color: var(--note-ink); opacity: 0.55; width: 26px; height: 26px; border-radius: 8px; font-size: 18px; line-height: 1; padding: 0; }
+.note .nx:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
+.note .ask { font-size: 13px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.note .ask button { border: 0; background: rgba(0, 0, 0, 0.1); color: var(--note-ink); border-radius: 6px; padding: 3px 8px; font-size: 13px; font-weight: 600; }
+.note.addnote {
+  background: transparent; box-shadow: none; border: 2px dashed var(--line); color: var(--muted);
+  align-items: center; justify-content: center; font-family: var(--font-hand); font-size: 26px; font-weight: 700;
+}
+.note.addnote::before { display: none; }
+.note.addnote:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---- day ---- */
 .daybar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -314,6 +361,10 @@ form.add select { flex: 1 1 140px; }
     <div class="msg" id="msg"></div>
   </div>
 
+  <section aria-label="Стикеры">
+    <div class="notes-row" id="notes"></div>
+  </section>
+
   <section>
     <div class="daybar">
       <div class="day">
@@ -409,6 +460,7 @@ form.add select { flex: 1 1 140px; }
     if (!Array.isArray(s.habits) || !s.habits.length) s.habits = clone(DEFAULT_HABITS);
     if (!s.log || typeof s.log !== "object") s.log = {};
     if (!Array.isArray(s.seen)) s.seen = null;
+    if (!Array.isArray(s.notes)) s.notes = [{ id: "n1", text: "Ты знал, что будет лень. Просто разминка и один подход.", color: 0 }];
     return s;
   }
 
@@ -419,6 +471,7 @@ form.add select { flex: 1 1 140px; }
   let calFilter = "all";
   let confirmId = null;
   let popId = null;
+  let noteConfirm = null;
 
   // ---------- storage ----------
   let ref = null, dirty = false, writing = false, saveTimer = null, retried = false;
@@ -667,6 +720,8 @@ form.add select { flex: 1 1 140px; }
 
   function render() {
     renderHero();
+    // Don't rebuild the notes while one is being typed in, or the cursor would jump.
+    if (!(document.activeElement && document.activeElement.matches("[data-note-text]"))) renderNotes();
     renderDay();
     renderMonth();
     renderProgress();
@@ -706,6 +761,28 @@ form.add select { flex: 1 1 140px; }
     document.getElementById("curStreakUnit").textContent = plural(H.curActive, "день", "дня", "дней") + " подряд";
     document.getElementById("perfCount").textContent = H.perfectDays;
     document.getElementById("msg").textContent = dayMessage(s, H);
+  }
+
+  // Each note keeps the same slight tilt, derived from its id.
+  function tilt(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    return ((Math.abs(h) % 50) / 10 - 2.5).toFixed(1);
+  }
+  function autosize(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+
+  function renderNotes() {
+    const el = document.getElementById("notes");
+    el.innerHTML = state.notes.map((n) => {
+      const tools = noteConfirm === n.id
+        ? '<span class="ask">Удалить? <button data-act="note-del-yes" data-id="' + esc(n.id) + '">Да</button><button data-act="note-del-no">Нет</button></span>'
+        : '<span class="dots">' + [0, 1, 2, 3, 4].map((c) => '<button class="dot-c" style="--c:var(--n' + (c + 1) + ')" data-act="note-color" data-id="' + esc(n.id) + '" data-c="' + c + '" aria-pressed="' + (n.color === c) + '" aria-label="Цвет ' + (c + 1) + '"></button>').join("") + "</span>" +
+          '<button class="nx" data-act="note-del" data-id="' + esc(n.id) + '" aria-label="Удалить стикер">×</button>';
+      return '<div class="note" style="--nc:var(--n' + ((n.color || 0) + 1) + ");--rot:" + tilt(n.id) + 'deg">' +
+        '<textarea data-note-text="' + esc(n.id) + '" maxlength="300" rows="3" placeholder="Напиши что-нибудь…" aria-label="Стикер">' + esc(n.text) + "</textarea>" +
+        '<div class="tools">' + tools + "</div></div>";
+    }).join("") + '<button class="note addnote" data-act="note-add">+ стикер</button>';
+    el.querySelectorAll("textarea").forEach(autosize);
   }
 
   function renderDay() {
@@ -887,6 +964,20 @@ form.add select { flex: 1 1 140px; }
     } else if (act === "goto") {
       viewDay = parseKey(b.dataset.day); render();
     } else if (act === "filter") { calFilter = id; renderMonth(); }
+    else if (act === "note-add") {
+      const n = { id: "n" + Date.now().toString(36), text: "", color: state.notes.length % 5 };
+      state.notes.push(n); save(); renderNotes();
+      const t = document.querySelector('[data-note-text="' + n.id + '"]');
+      if (t) { t.focus(); t.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest", inline: "center" }); }
+    } else if (act === "note-color") {
+      const n = state.notes.find((x) => x.id === id);
+      if (n) { n.color = Number(b.dataset.c); save(); renderNotes(); }
+    } else if (act === "note-del") { noteConfirm = id; renderNotes(); }
+    else if (act === "note-del-no") { noteConfirm = null; renderNotes(); }
+    else if (act === "note-del-yes") {
+      state.notes = state.notes.filter((x) => x.id !== id);
+      noteConfirm = null; save(); renderNotes();
+    }
     else if (act === "askdel") { confirmId = id; renderHabitList(); }
     else if (act === "nodel") { confirmId = null; renderHabitList(); }
     else if (act === "del") {
@@ -894,6 +985,14 @@ form.add select { flex: 1 1 140px; }
       Object.keys(state.log).forEach((k) => { delete state.log[k][id]; if (!Object.keys(state.log[k]).length) delete state.log[k]; });
       confirmId = null; save(); render();
     }
+  });
+
+  document.addEventListener("input", (e) => {
+    const t = e.target.closest("[data-note-text]");
+    if (!t) return;
+    const n = state.notes.find((x) => x.id === t.dataset.noteText);
+    if (!n) return;
+    n.text = t.value; autosize(t); save();
   });
 
   document.addEventListener("submit", (e) => {
@@ -934,6 +1033,8 @@ form.add select { flex: 1 1 140px; }
 
   render();
   connect();
+  // The handwriting font is taller than the fallback; resize notes once it has loaded.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll("[data-note-text]").forEach(autosize));
 })();
 </script>
 </body>
