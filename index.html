@@ -138,7 +138,7 @@ section { display: flex; flex-direction: column; gap: 12px; }
   padding: 14px 6px 16px; margin: -8px -6px 0; scroll-snap-type: x proximity; scrollbar-width: thin;
 }
 .note {
-  flex: none; width: 160px; min-height: 160px; position: relative;
+  flex: none; width: var(--w, 160px); min-height: var(--h, 160px); position: relative;
   background: var(--nc); color: var(--note-ink);
   border-radius: 3px 3px 14px 3px; padding: 20px 12px 8px;
   box-shadow: 0 7px 14px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.12);
@@ -163,7 +163,19 @@ section { display: flex; flex-direction: column; gap: 12px; }
 .notes-hint { font-size: 12px; color: var(--muted); margin-top: -8px; }
 .note textarea {
   flex: 1 0 auto; width: 100%; min-height: 100px; padding: 0; border: 0; outline: none; resize: none; overflow: hidden;
-  background: transparent; color: inherit; font-family: var(--font-hand); font-size: 23px; line-height: 1.12; font-weight: 500;
+  background: transparent; color: inherit; font-family: var(--font-hand); font-size: var(--fs, 23px); line-height: 1.12; font-weight: 500;
+}
+.note .rsz {
+  position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, rgba(42, 36, 16, 0.28) 50%, rgba(42, 36, 16, 0.28) 58%, transparent 58%, transparent 70%, rgba(42, 36, 16, 0.28) 70%, rgba(42, 36, 16, 0.28) 78%, transparent 78%);
+  border-radius: 0 0 14px 0;
+}
+.note.resizing { transition: none; }
+/* Resizing is a desktop feature: on touch screens every sticker keeps the standard size. */
+@media (pointer: coarse), (max-width: 600px) {
+  .note { width: 160px; min-height: 160px; }
+  .note textarea { font-size: 23px; }
+  .note .rsz { display: none; }
 }
 .note textarea::placeholder { color: rgba(42, 36, 16, 0.45); }
 .note .tools { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 26px; }
@@ -807,11 +819,49 @@ form.add select { flex: 1 1 140px; }
         ? '<span class="ask">Удалить? <button data-act="note-del-yes" data-id="' + esc(n.id) + '">Да</button><button data-act="note-del-no">Нет</button></span>'
         : '<span class="dots">' + [0, 1, 2, 3, 4].map((c) => '<button class="dot-c" style="--c:var(--n' + (c + 1) + ')" data-act="note-color" data-id="' + esc(n.id) + '" data-c="' + c + '" aria-pressed="' + (n.color === c) + '" aria-label="Цвет ' + (c + 1) + '"></button>').join("") + "</span>" +
           '<button class="nx" data-act="note-del" data-id="' + esc(n.id) + '" aria-label="Удалить стикер">×</button>';
-      return '<div class="note' + (floating ? " floating" : "") + '" data-note="' + esc(n.id) + '" style="--nc:var(--n' + ((n.color || 0) + 1) + ");--rot:" + tilt(n.id) + 'deg">' +
+      return '<div class="note' + (floating ? " floating" : "") + '" data-note="' + esc(n.id) + '" style="--nc:var(--n' + ((n.color || 0) + 1) + ");--rot:" + tilt(n.id) + "deg" + sizeVars(n.w, n.h) + '">' +
         '<div class="grip" data-drag="' + esc(n.id) + '" title="Перетащить"></div>' +
         '<textarea data-note-text="' + esc(n.id) + '" maxlength="300" rows="3" placeholder="Напиши что-нибудь…" aria-label="Стикер">' + esc(n.text) + "</textarea>" +
-        '<div class="tools">' + tools + "</div></div>";
+        '<div class="tools">' + tools + "</div>" +
+        '<div class="rsz" data-resize="' + esc(n.id) + '" title="Изменить размер"></div></div>';
   }
+  // Text grows with the sticker's width.
+  const fontFor = (w) => Math.round(Math.max(18, Math.min(64, 23 * w / 160)));
+  function sizeVars(w, h) {
+    return w ? ";--w:" + w + "px;--h:" + h + "px;--fs:" + fontFor(w) + "px" : "";
+  }
+
+  // Desktop only: drag the bottom-right corner to resize.
+  let resize = null;
+  document.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest("[data-resize]");
+    if (!h || e.button > 0) return;
+    const n = state.notes.find((x) => x.id === h.dataset.resize);
+    if (!n) return;
+    e.preventDefault();
+    const el = h.closest(".note");
+    resize = { n, el, x: e.clientX, y: e.clientY, w0: el.offsetWidth, h0: el.offsetHeight };
+    el.classList.add("resizing");
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!resize) return;
+    const w = Math.round(Math.max(120, Math.min(520, resize.w0 + e.clientX - resize.x)));
+    const h = Math.round(Math.max(120, Math.min(640, resize.h0 + e.clientY - resize.y)));
+    resize.w = w; resize.h = h;
+    resize.el.style.setProperty("--w", w + "px");
+    resize.el.style.setProperty("--h", h + "px");
+    resize.el.style.setProperty("--fs", fontFor(w) + "px");
+    const t = resize.el.querySelector("textarea");
+    if (t) autosize(t);
+  });
+  function endResize() {
+    if (!resize) return;
+    if (resize.w) { resize.n.w = resize.w; resize.n.h = resize.h; save(); }
+    resize = null;
+    renderNotes();
+  }
+  window.addEventListener("pointerup", endResize);
+  window.addEventListener("pointercancel", endResize);
 
   // Drag a note by its tape: out of the row it floats on the page; dropped on the row it docks again.
   let drag = null;
