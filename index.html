@@ -146,11 +146,21 @@ section { display: flex; flex-direction: column; gap: 12px; }
   display: flex; flex-direction: column; gap: 6px; transition: transform .2s;
 }
 .note:focus-within { transform: rotate(0deg) scale(1.03); z-index: 1; }
-.note::before {
-  content: ""; position: absolute; top: -9px; left: 50%; width: 58px; height: 20px;
-  transform: translateX(-50%) rotate(-4deg); background: var(--tape);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+.note .grip {
+  position: absolute; top: -12px; left: 0; right: 0; height: 34px;
+  display: flex; justify-content: center; align-items: flex-start;
+  cursor: grab; touch-action: none; user-select: none;
 }
+.note .grip::before {
+  content: ""; width: 58px; height: 20px; margin-top: 3px; transform: rotate(-4deg);
+  background: var(--tape); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.note.floating { position: absolute; z-index: 5; }
+.note.dragging { transform: rotate(0deg) scale(1.06); box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32); transition: none; z-index: 20; }
+.note.dragging .grip { cursor: grabbing; }
+#floatLayer { position: absolute; top: 0; left: 0; width: 100%; height: 0; z-index: 5; }
+.notes-row.drop { outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: 14px; }
+.notes-hint { font-size: 12px; color: var(--muted); margin-top: -8px; }
 .note textarea {
   flex: 1 0 auto; width: 100%; min-height: 100px; padding: 0; border: 0; outline: none; resize: none; overflow: hidden;
   background: transparent; color: inherit; font-family: var(--font-hand); font-size: 23px; line-height: 1.12; font-weight: 500;
@@ -168,7 +178,6 @@ section { display: flex; flex-direction: column; gap: 12px; }
   background: transparent; box-shadow: none; border: 2px dashed var(--line); color: var(--muted);
   align-items: center; justify-content: center; font-family: var(--font-hand); font-size: 26px; font-weight: 700;
 }
-.note.addnote::before { display: none; }
 .note.addnote:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---- day ---- */
@@ -336,6 +345,7 @@ form.add select { flex: 1 1 140px; }
 </style>
 
 <canvas id="confetti" hidden></canvas>
+<div id="floatLayer"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <div class="wrap">
@@ -363,6 +373,7 @@ form.add select { flex: 1 1 140px; }
 
   <section aria-label="Стикеры">
     <div class="notes-row" id="notes"></div>
+    <p class="notes-hint">Тяни стикер за скотч и клей куда угодно. Чтобы вернуть, перетащи обратно сюда.</p>
   </section>
 
   <section>
@@ -771,19 +782,83 @@ form.add select { flex: 1 1 140px; }
   }
   function autosize(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
 
+  // Docked notes sit in the row; a note with `pos` floats on the page at
+  // x px from the page's centre line and y px from the top.
   function renderNotes() {
-    const el = document.getElementById("notes");
-    el.innerHTML = state.notes.map((n) => {
+    const docked = state.notes.filter((n) => !n.pos), floating = state.notes.filter((n) => n.pos);
+    document.getElementById("notes").innerHTML = docked.map((n) => noteHTML(n, false)).join("") +
+      '<button class="note addnote" data-act="note-add">+ стикер</button>';
+    document.getElementById("floatLayer").innerHTML = floating.map((n) => noteHTML(n, true)).join("");
+    placeFloating();
+    document.querySelectorAll("[data-note-text]").forEach(autosize);
+  }
+  function placeFloating() {
+    const W = document.documentElement.clientWidth;
+    document.querySelectorAll("#floatLayer .note").forEach((el) => {
+      const n = state.notes.find((x) => x.id === el.dataset.note);
+      if (!n || !n.pos) return;
+      const w = el.offsetWidth || 160;
+      el.style.left = Math.max(4, Math.min(W - w - 4, W / 2 + n.pos.x)) + "px";
+      el.style.top = Math.max(0, n.pos.y) + "px";
+    });
+  }
+  function noteHTML(n, floating) {
       const tools = noteConfirm === n.id
         ? '<span class="ask">Удалить? <button data-act="note-del-yes" data-id="' + esc(n.id) + '">Да</button><button data-act="note-del-no">Нет</button></span>'
         : '<span class="dots">' + [0, 1, 2, 3, 4].map((c) => '<button class="dot-c" style="--c:var(--n' + (c + 1) + ')" data-act="note-color" data-id="' + esc(n.id) + '" data-c="' + c + '" aria-pressed="' + (n.color === c) + '" aria-label="Цвет ' + (c + 1) + '"></button>').join("") + "</span>" +
           '<button class="nx" data-act="note-del" data-id="' + esc(n.id) + '" aria-label="Удалить стикер">×</button>';
-      return '<div class="note" style="--nc:var(--n' + ((n.color || 0) + 1) + ");--rot:" + tilt(n.id) + 'deg">' +
+      return '<div class="note' + (floating ? " floating" : "") + '" data-note="' + esc(n.id) + '" style="--nc:var(--n' + ((n.color || 0) + 1) + ");--rot:" + tilt(n.id) + 'deg">' +
+        '<div class="grip" data-drag="' + esc(n.id) + '" title="Перетащить"></div>' +
         '<textarea data-note-text="' + esc(n.id) + '" maxlength="300" rows="3" placeholder="Напиши что-нибудь…" aria-label="Стикер">' + esc(n.text) + "</textarea>" +
         '<div class="tools">' + tools + "</div></div>";
-    }).join("") + '<button class="note addnote" data-act="note-add">+ стикер</button>';
-    el.querySelectorAll("textarea").forEach(autosize);
   }
+
+  // Drag a note by its tape: out of the row it floats on the page; dropped on the row it docks again.
+  let drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    const g = e.target.closest("[data-drag]");
+    if (!g || e.button > 0) return;
+    const n = state.notes.find((x) => x.id === g.dataset.drag);
+    if (!n) return;
+    e.preventDefault();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const wasDocked = !n.pos;
+    if (wasDocked) {
+      const r = g.closest(".note").getBoundingClientRect();
+      n.pos = { x: r.left + scrollX - document.documentElement.clientWidth / 2, y: r.top + scrollY };
+      renderNotes();
+    }
+    const el = document.querySelector('#floatLayer .note[data-note="' + CSS.escape(n.id) + '"]');
+    if (!el) return;
+    const left = parseFloat(el.style.left), top = parseFloat(el.style.top);
+    drag = { n, el, wasDocked, startX: e.pageX, startY: e.pageY, offX: e.pageX - left, offY: e.pageY - top, left, top, moved: false, over: false };
+    el.classList.add("dragging");
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    drag.left = e.pageX - drag.offX;
+    drag.top = Math.max(0, e.pageY - drag.offY);
+    drag.el.style.left = drag.left + "px";
+    drag.el.style.top = drag.top + "px";
+    if (Math.hypot(e.pageX - drag.startX, e.pageY - drag.startY) > 4) drag.moved = true;
+    const row = document.getElementById("notes"), rr = row.getBoundingClientRect();
+    drag.over = e.clientX >= rr.left && e.clientX <= rr.right && e.clientY >= rr.top && e.clientY <= rr.bottom;
+    row.classList.toggle("drop", drag.over);
+    if (e.clientY < 48) scrollBy(0, -14);
+    else if (e.clientY > innerHeight - 48) scrollBy(0, 14);
+  });
+  function endDrag() {
+    if (!drag) return;
+    const { n } = drag;
+    if (drag.over || (!drag.moved && drag.wasDocked)) n.pos = null;
+    else n.pos = { x: drag.left - document.documentElement.clientWidth / 2, y: drag.top };
+    document.getElementById("notes").classList.remove("drop");
+    drag = null;
+    save(); renderNotes();
+  }
+  window.addEventListener("pointerup", endDrag);
+  window.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", placeFloating);
 
   function renderDay() {
     const t = today();
