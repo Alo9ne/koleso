@@ -353,6 +353,39 @@ form.add select { flex: 1 1 140px; }
 @keyframes toastin { from { opacity: 0; transform: translateY(20px) scale(.96); } }
 @keyframes toastout { to { opacity: 0; transform: translateY(12px); } }
 #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
+
+/* ---- layout columns ---- */
+.columns, .col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.hrow[data-act] { cursor: pointer; }
+.kbd, .desk-only { display: none; }
+.kbd {
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted); order: 9;
+  min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--line); border-radius: 5px;
+  place-items: center;
+}
+
+/* Desktop: wide hero, stickers wrap, habits on the left, calendar and progress on the right.
+   The width leaves the page's side margins free for stickers on large monitors. */
+@media (min-width: 960px) {
+  .wrap { max-width: 1120px; padding-block: 24px 64px; }
+  .hero { grid-template-columns: auto minmax(0, 1fr) minmax(240px, 300px); gap: 28px; padding: 24px 28px; }
+  .ring { width: 128px; height: 128px; }
+  .ring .big { font-size: 32px; }
+  .ltitle { font-size: 20px; }
+  .msg { grid-column: auto; font-size: 15px; }
+  .notes-row { flex-wrap: wrap; overflow: visible; }
+  .columns { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 24px; align-items: start; }
+  .hside { flex-direction: row; align-items: center; gap: 10px; }
+  .kbd { display: inline-grid; }
+  .desk-only { display: block; }
+  .filters { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+  .cell { aspect-ratio: 1.45; font-size: 14px; }
+  .cal { gap: 6px; }
+  .badges { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .habit:has(.hrow[data-act]):hover { border-color: var(--accent); }
+  .cell:not(.future):not(.empty):hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .iconbtn:not(:disabled):hover, .todaybtn:hover, .filter:hover { border-color: var(--accent); }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 
@@ -383,11 +416,8 @@ form.add select { flex: 1 1 140px; }
     <div class="msg" id="msg"></div>
   </div>
 
-  <section aria-label="Стикеры">
-    <div class="notes-row" id="notes"></div>
-    <p class="notes-hint">Тяни стикер за скотч и клей куда угодно. Чтобы вернуть, перетащи обратно сюда.</p>
-  </section>
-
+  <div class="columns">
+  <div class="col">
   <section>
     <div class="daybar">
       <div class="day">
@@ -402,28 +432,7 @@ form.add select { flex: 1 1 140px; }
     </div>
     <div class="list" id="list"></div>
     <p class="rule"><b>Плохой день?</b> Разминка и один подход тоже засчитываются. Один пропуск — нормально, два подряд — нет.</p>
-  </section>
-
-  <section>
-    <h2>Календарь</h2>
-    <div class="panel">
-      <div class="monthnav">
-        <button class="iconbtn" id="prevMonth" aria-label="Предыдущий месяц">‹</button>
-        <span class="mname" id="monthName"></span>
-        <button class="iconbtn" id="nextMonth" aria-label="Следующий месяц">›</button>
-      </div>
-      <div class="filters" id="filters"></div>
-      <div class="cal" id="cal"></div>
-      <div class="legend"><span>Меньше</span><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>Больше</span><span class="gold"></span><span>идеальный день</span></div>
-      <div class="mstats" id="mstats"></div>
-    </div>
-  </section>
-
-  <section id="progress"></section>
-
-  <section>
-    <div class="sechead"><h2>Достижения</h2><span class="muted num" id="badgeCount"></span></div>
-    <div class="badges" id="badges"></div>
+    <p class="rule desk-only"><b>Клавиши:</b> цифры 1–9 отмечают привычку, стрелки ← → листают дни.</p>
   </section>
 
   <section>
@@ -448,6 +457,37 @@ form.add select { flex: 1 1 140px; }
         <div class="err" id="addErr" hidden></div>
       </form>
     </div>
+  </section>
+  </div>
+
+  <div class="col">
+  <section aria-label="Стикеры">
+    <div class="notes-row" id="notes"></div>
+    <p class="notes-hint">Тяни стикер за скотч и клей куда угодно. Чтобы вернуть, перетащи обратно сюда.</p>
+  </section>
+
+  <section>
+    <h2>Календарь</h2>
+    <div class="panel">
+      <div class="monthnav">
+        <button class="iconbtn" id="prevMonth" aria-label="Предыдущий месяц">‹</button>
+        <span class="mname" id="monthName"></span>
+        <button class="iconbtn" id="nextMonth" aria-label="Следующий месяц">›</button>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="cal" id="cal"></div>
+      <div class="legend"><span>Меньше</span><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>Больше</span><span class="gold"></span><span>идеальный день</span></div>
+      <div class="mstats" id="mstats"></div>
+    </div>
+  </section>
+
+  <section id="progress"></section>
+  </div>
+  </div>
+
+  <section>
+    <div class="sechead"><h2>Достижения</h2><span class="muted num" id="badgeCount"></span></div>
+    <div class="badges" id="badges"></div>
   </section>
 </div>
 
@@ -908,7 +948,21 @@ form.add select { flex: 1 1 140px; }
   }
   window.addEventListener("pointerup", endDrag);
   window.addEventListener("pointercancel", endDrag);
-  window.addEventListener("resize", placeFloating);
+  window.addEventListener("resize", () => { placeFloating(); renderProgress(); });
+
+  // Keyboard: digits mark the matching habit, arrows change the day.
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || (e.target.closest && e.target.closest("input, textarea, select"))) return;
+    if (e.key === "ArrowLeft") document.getElementById("prevDay").click();
+    else if (e.key === "ArrowRight") document.getElementById("nextDay").click();
+    else if (/^[1-9]$/.test(e.key)) {
+      const h = state.habits[Number(e.key) - 1];
+      if (!h) return;
+      e.preventDefault();
+      if (h.type === "check") document.querySelector('button.check[data-id="' + CSS.escape(h.id) + '"]').click();
+      else document.getElementById("in-" + h.id).focus();
+    }
+  });
 
   function renderDay() {
     const t = today();
@@ -918,11 +972,11 @@ form.add select { flex: 1 1 140px; }
     document.getElementById("nextDay").disabled = isToday;
     document.getElementById("goToday").hidden = isToday;
 
-    document.getElementById("list").innerHTML = state.habits.map((h) => {
+    document.getElementById("list").innerHTML = state.habits.map((h, idx) => {
       const d = isDone(h, viewDay);
       const rest = isRest(h, viewDay);
       const s = habitStreak(h);
-      let side = "";
+      let side = idx < 9 ? '<span class="kbd">' + (idx + 1) + "</span>" : "";
       if (s) side += '<span class="streak">' + FLAME + s + "</span>";
       if (isToday && missedTwice(h)) side += '<span class="tag">Сегодня обязательно</span>';
       else if (rest) side += '<span class="tag rest">День отдыха</span>';
@@ -949,7 +1003,7 @@ form.add select { flex: 1 1 140px; }
         ? '<button class="check" data-act="toggle" data-id="' + esc(h.id) + '" aria-pressed="' + d + '" aria-label="' + esc(h.name) + '">' + CHECK_SVG + "</button>"
         : '<div class="check" aria-hidden="true">' + CHECK_SVG + "</div>";
       return '<div class="habit' + (d ? " is-done" : "") + (rest ? " is-rest" : "") + (popId === h.id ? " pop" : "") + '" data-id="' + esc(h.id) + '">' +
-        '<div class="hrow">' + toggle +
+        '<div class="hrow"' + (h.type === "check" ? ' data-act="toggle" data-id="' + esc(h.id) + '"' : "") + ">" + toggle +
           '<div class="hmain"><span class="hname">' + esc(h.name) + "</span>" + (h.hint ? '<span class="hhint">' + esc(h.hint) + "</span>" : "") + "</div>" +
           '<div class="hside">' + side + "</div>" +
         "</div>" + body + "</div>";
@@ -1005,7 +1059,8 @@ form.add select { flex: 1 1 140px; }
     const t = today();
     const counts = state.habits.filter((h) => h.type === "count");
     document.getElementById("progress").innerHTML = counts.map((h) => {
-      const N = 30, W = 340, H = 150, top = 20, bottom = 22, left = 2;
+      const wide = innerWidth >= 960;
+      const N = 30, W = wide ? 560 : 340, H = wide ? 190 : 150, top = 20, bottom = 22, left = 2;
       const days = [];
       for (let i = N - 1; i >= 0; i--) days.push(addDays(t, -i));
       const totals = days.map((d) => sum(entry(d, h.id) || []));
